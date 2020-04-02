@@ -3,6 +3,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <sys/mman.h>
+
 
 //======================================================================
 // Global Variables
@@ -40,18 +42,50 @@ struct block *find_free_block(struct block **l, size_t size) {
 // Request more free space to be put onto the heap
 struct block *request_free_space(struct block* l, size_t size) {
 	struct block *b;
-	b = sbrk(0);
-	void *request = sbrk(size + BLOCK_SIZE);
-	if (request == (void*) -1) {
-		return NULL;
+	if (size < 4096) {
+		b = sbrk(0);
+		void *request = sbrk(size + BLOCK_SIZE);
+		if (request == (void*) -1) {
+			return NULL;
+		}
+		if (l) {
+			l->next = b;
+		}
+		b->size = size;
+		b->next = NULL;
+		b->free = 0;
+		return b;
 	}
-	if (l) {
-		l->next = b;
-	}
-	b->size = size;
-	b->next = NULL;
-	b->free = 0;
-	return b;	
+	else {
+		b = mmap(NULL, size, PROT_WRITE, MAP_ANONYMOUS, 0, 0);
+		if (b == (void*) -1) {
+			return NULL;
+		}
+		int leftover = size % sysconf(_SC_PAGE_SIZE);
+		if (leftover == 0) {
+			if (l) {
+				l->next = b;
+			}
+			b->size = size;
+			b->next = NULL;
+			b->free = 0;
+			return b;
+		}
+		else {
+			int free_space = sysconf(_SC_PAGE_SIZE) - leftover;
+			struct block *free_block;
+			if (l) {
+				l->next = b;
+			}
+			b->size = size;
+			free_block->size = free_space;
+			b->next = free_block;
+			free_block->next = NULL;
+			b->free = 0;
+			free_block->free = 1;
+			return free_block;
+		}
+	}	
 }
 
 //======================================================================
