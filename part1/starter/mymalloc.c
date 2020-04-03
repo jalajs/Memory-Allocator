@@ -4,14 +4,17 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <sys/mman.h>
-
-
+#include <pthread.h>
+#include <sched.h>
 //======================================================================
 // Global Variables
 //======================================================================
 
+int sched_getcpu();
+
 #define BLOCK_SIZE sizeof(block_t)
-void *base = NULL;
+
+#define THREAD_NUM 48
 
 //======================================================================
 // Struct Definitions
@@ -24,12 +27,20 @@ typedef struct block{
 }block_t;
 
 //======================================================================
+// Initializing Free List and Lock List
+//======================================================================
+
+block_t* free_list[THREAD_NUM];
+
+pthread_mutex_t lock_list[THREAD_NUM] = {PTHREAD_MUTEX_INITIALIZER};
+
+//======================================================================
 // Helper Functions
 //======================================================================
 
 // Find a free block of memory in our current heap
 struct block *find_free_block(struct block **l, size_t size) {
-	struct block *curr = base;
+	struct block *curr = free_list[sched_getcpu() % THREAD_NUM];
 	while (curr && !(curr->free && curr->size >= size && curr->size - size <= 4)) {
 		*l = curr;
 		curr = curr->next;
@@ -99,6 +110,9 @@ struct block *get_ptr(void *ptr) {
 //======================================================================
 
 void* mymalloc(size_t s){
+	struct block *base = free_list[sched_getcpu() % THREAD_NUM];
+	pthread_mutex_t mutex = lock_list[sched_getcpu() % THREAD_NUM];
+	pthread_mutex_lock(&mutex);
 	struct block *b;
 	// If invalid size, malloc returns NULL
 	if (s <= 0) {
@@ -136,7 +150,7 @@ void* mymalloc(size_t s){
 	}
 
 	printf("malloc %zu bytes\n",s);
-	
+	pthread_mutex_unlock(&mutex);	
 	// Returns the pointer to the actual memory
 	return (b + 1);
 }
@@ -144,6 +158,8 @@ void* mymalloc(size_t s){
 //======================================================================
 
 void* mycalloc(size_t nmemb, size_t s){
+	pthread_mutex_t mutex = lock_list[sched_getcpu() % THREAD_NUM];
+	pthread_mutex_lock(&mutex);
 	// Calculate the new size
 	size_t size = nmemb * s;
 	// Get the pointer to the array
@@ -151,12 +167,15 @@ void* mycalloc(size_t nmemb, size_t s){
 	// Fill the allocated memory with 0 values as a place holder
 	memset(ptr, 0, size);
 	printf("calloc %zu bytes\n", size);
+	pthread_mutex_unlock(&mutex);
 	return ptr;
 }
 	
 //======================================================================
 
 void myfree(void *ptr){
+	pthread_mutex_t mutex = lock_list[sched_getcpu() % THREAD_NUM];
+	pthread_mutex_lock(&mutex);
 	// If ptr is NULL
 	if (!ptr) {
 		return;
@@ -167,7 +186,8 @@ void myfree(void *ptr){
 	assert(b_ptr->free == 0);
 	// Free the block
 	b_ptr->free = 1; 
-	printf("Freed %zu bytes\n", b_ptr->size);
+	printf("Freed %zu bytes\n", b_ptr->size);	
+	pthread_mutex_unlock(&mutex);
 }
 	
 //======================================================================
