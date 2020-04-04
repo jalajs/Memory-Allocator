@@ -1,13 +1,9 @@
 # Memory Allocator 2
 
-TODO Please edit the following information in your assignment
 
-- Name:
-- How many hours did it take you to complete this assignment?
-- Did you collaborate with any other students/TAs/Professors?
-- Did you use any external resources? (Cite them below)
-  - tbd
-  - tbd
+- Name: Pavan Hirpara & Jalaj Singh
+- How many hours did it take you to complete this assignment? 6
+- Did you collaborate with any other students/TAs/Professors? No  
 - (Optional) What was your favorite part of the assignment?
 - (Optional) How would you improve the assignment?
 
