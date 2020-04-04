@@ -14,6 +14,7 @@ int sched_getcpu();
 
 #define BLOCK_SIZE sizeof(block_t)
 
+// Defined to be 48, due to the fact that CPU number is a compile time constant that cannot be used to initialize an array
 #define THREAD_NUM 48
 
 //======================================================================
@@ -81,7 +82,7 @@ struct block *request_free_space(struct block* l, size_t size) {
 			b->next = NULL;
 			b->free = 0;
 			return b;
-		}
+		}		
 		else {
 			int free_space = sysconf(_SC_PAGE_SIZE) - leftover;
 			struct block *free_block;
